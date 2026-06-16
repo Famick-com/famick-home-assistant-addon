@@ -8,9 +8,13 @@
 
 FROM mtherienfamick/homemanagement:latest
 
-# Mirrors the wrapper repo's docker-image.yml: TARGETARCH is set
-# automatically by buildx; defaults preserve `docker build` on x86_64.
-ARG TARGETARCH=amd64
+# TARGETARCH is set automatically by buildx per --platform. Do NOT give it a
+# default value: a default SHADOWS buildx's per-platform value, so the aarch64
+# build would still see amd64 and bake an x86_64 s6-overlay into the arm64
+# image (=> "s6-overlay-suexec: Exec format error" on arm64 hosts). For a plain
+# `docker build` (no buildx) TARGETARCH is empty; we fall back to the build
+# host's arch via `dpkg --print-architecture` in the RUN below.
+ARG TARGETARCH
 
 # s6-overlay v3 (sysroot variant). Pin a known-good release; update
 # deliberately when needed since the rootfs layout is sensitive to the
@@ -27,10 +31,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         xz-utils \
         ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
-    && case "${TARGETARCH}" in \
+    && S6_TARGETARCH="${TARGETARCH:-$(dpkg --print-architecture)}" \
+    && case "${S6_TARGETARCH}" in \
         amd64) S6_ARCH=x86_64 ; S6_SHA="${S6_OVERLAY_AMD64_SHA256}" ;; \
         arm64) S6_ARCH=aarch64 ; S6_SHA="${S6_OVERLAY_ARM64_SHA256}" ;; \
-        *) echo "Unsupported TARGETARCH '${TARGETARCH}'"; exit 1 ;; \
+        *) echo "Unsupported target arch '${S6_TARGETARCH}'"; exit 1 ;; \
     esac \
     && curl -fsSLO "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz" \
     && echo "${S6_OVERLAY_NOARCH_SHA256}  s6-overlay-noarch.tar.xz" | sha256sum -c - \

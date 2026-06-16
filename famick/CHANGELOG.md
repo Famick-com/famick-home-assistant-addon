@@ -6,6 +6,20 @@ and the version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.3]
+
+### Fixed
+
+- The `aarch64` image bundled an x86_64 `s6-overlay`, so on arm64 hosts
+  (Raspberry Pi 4/5) `/init` failed with `s6-overlay-suexec: Exec format
+  error` and the add-on never started. Cause: the Dockerfile declared
+  `ARG TARGETARCH=amd64`, and the default value shadows buildx's
+  per-platform value, so the aarch64 build leg still resolved `amd64` and
+  downloaded the wrong s6-overlay. The default is removed (with a
+  `dpkg --print-architecture` fallback for plain `docker build`), so each
+  arch now gets the matching s6-overlay binary. The amd64 image was
+  unaffected.
+
 ## [0.1.2]
 
 ### Fixed
