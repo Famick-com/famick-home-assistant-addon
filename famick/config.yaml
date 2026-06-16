@@ -1,0 +1,29 @@
+---
+name: Famick Home Management
+version: "0.1.0"
+slug: famick
+description: Self-hosted household management — inventory, equipment, vehicles, recipes, chores, contacts. Single sign-on with your HA user via Ingress.
+url: https://github.com/Famick-com/famick-home-assistant-addon
+
+# Multi-arch — image build is local per host (see Dockerfile).
+arch:
+  - amd64
+  - aarch64
+
+# s6-overlay owns process supervision (postgres + famick + scheduler).
+init: false
+startup: services
+boot: auto
+
+# Sidebar UI via Supervisor's reverse proxy; no port exposure required.
+ingress: true
+ingress_port: 8088
+panel_icon: mdi:home-heart
+panel_title: Famick
+
+# Operator-tweakable knobs. Add sparingly — HA Ingress SSO + the first-boot
+# bootstrap script cover most setup automatically.
+options:
+  log_level: info
+schema:
+  log_level: list(trace|debug|info|notice|warning|error|fatal)?

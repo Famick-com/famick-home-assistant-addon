@@ -1,0 +1,18 @@
+#!/command/with-contenv bash
+# s6-overlay cont-init step 2: run the Famick app-level first-boot bootstrap.
+# The script itself lives in the canonical Famick image (baked in by
+# self-hosted/docker-compose/Dockerfile from the submodule's
+# self-hosted/home-assistant-plugin/bootstrap.sh). This cont-init step is
+# just a thin invocation so the same logic that runs under docker-compose
+# also runs under the add-on, with /data as the persistent target.
+
+set -euo pipefail
+
+if [ ! -x /app/scripts/bootstrap.sh ]; then
+    echo "[02-famick-bootstrap] /app/scripts/bootstrap.sh missing — rebuild the canonical Famick image to include it" >&2
+    exit 1
+fi
+
+FAMICK_DATA_DIR=/data \
+FAMICK_PLUGINS_EXAMPLE=/app/plugins/config.example.json \
+    /app/scripts/bootstrap.sh

@@ -1,0 +1,13 @@
+#!/command/with-contenv bash
+# s6 service: bundled Postgres 16 daemon. Runs in the foreground so s6
+# can supervise it; logs to stderr (s6 captures them).
+#
+# Data dir + binary path come from env vars set in the Dockerfile so the
+# wrapper repo owns those paths in one place. cont-init.d/01-postgres
+# guarantees the data dir is initialized before we get here.
+
+set -euo pipefail
+
+exec sudo -u postgres "${POSTGRES_BIN}/postgres" \
+    -D "${POSTGRES_DATA}" \
+    -c "unix_socket_directories=${POSTGRES_RUN}"

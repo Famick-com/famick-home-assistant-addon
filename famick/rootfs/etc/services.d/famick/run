@@ -1,0 +1,47 @@
+#!/command/with-contenv bash
+# s6 service: Famick.HomeManagement.Web — the .NET 10 web app. Same
+# binary the docker-compose image runs; the add-on differs only in:
+#   - /data path (Supervisor's persistent mount instead of ./data)
+#   - HaIngress enabled with Supervisor's docker CIDR trusted
+#   - tenant id loaded from /data/config/tenant-id (written by bootstrap)
+
+set -euo pipefail
+
+# Wait for Postgres to accept connections before booting the .NET app.
+# 01-postgres already validated the data dir and seeded the role+db,
+# but the per-boot daemon (services.d/postgres) hasn't necessarily
+# opened the listening socket yet at this point in the s6 start order.
+until pg_isready -h localhost -U famick -d famick >/dev/null 2>&1; do
+    echo "[famick] waiting for postgres..."
+    sleep 1
+done
+
+TENANT_ID=$(cat /data/config/tenant-id)
+
+export ASPNETCORE_ENVIRONMENT=Production
+export ASPNETCORE_URLS=http://+:8088
+
+export ConnectionStrings__DefaultConnection="Host=localhost;Database=famick;Username=famick;Password=famick"
+
+export FixedTenantId="${TENANT_ID}"
+export SelfHosted__TenantId="${TENANT_ID}"
+export SelfHosted__ApplicationName="Famick (Home Assistant)"
+
+export JwtSettings__RsaPrivateKeyPemFile=/data/keys/jwt-rsa.pem
+export JwtSettings__Issuer=https://localhost
+export JwtSettings__Audience=https://localhost
+
+export Storage__Path=/data
+
+# HA Ingress: trust Supervisor's docker network so the X-Remote-User-*
+# headers it forwards are honored. The exact CIDR (172.30.32.0/23 for
+# current HA OS) is documented but operator-overridable — Supervisor
+# could change it in the future. Operators set Options.log_level via
+# config.yaml; that's wired through Supervisor's options.json (mounted
+# at /data/options.json) but Famick's existing Serilog config is fine
+# at default level for v0.1, so we don't translate it yet.
+export HaIngress__Enabled=true
+export HaIngress__TrustedProxies__0=172.30.32.0/23
+
+cd /app
+exec dotnet Famick.HomeManagement.Web.dll

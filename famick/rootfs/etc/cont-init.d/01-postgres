@@ -1,0 +1,67 @@
+#!/command/with-contenv bash
+# s6-overlay cont-init step 1: initialize the bundled Postgres data dir on
+# first boot and ensure the famick role + database exist.
+#
+# Idempotent — re-runs on every container start. initdb only fires when
+# the data dir is empty; user/db creation skips if they already exist.
+
+set -euo pipefail
+
+DATA="${POSTGRES_DATA:-/data/postgres}"
+BIN="${POSTGRES_BIN:-/usr/lib/postgresql/16/bin}"
+RUN_DIR="${POSTGRES_RUN:-/var/run/postgresql}"
+
+mkdir -p "${DATA}"
+chown postgres:postgres "${DATA}"
+chmod 700 "${DATA}"
+
+# Postgres expects the per-cluster socket dir to be writable by the
+# postgres user. /var/run/postgresql exists in the base image but the
+# permissions can drift across base-image updates — re-assert each boot.
+mkdir -p "${RUN_DIR}"
+chown postgres:postgres "${RUN_DIR}"
+
+if [ ! -f "${DATA}/PG_VERSION" ]; then
+    echo "[01-postgres] initializing Postgres 16 data dir at ${DATA}"
+    sudo -u postgres "${BIN}/initdb" \
+        -D "${DATA}" \
+        --auth-local=trust \
+        --auth-host=md5 \
+        --encoding=UTF8 \
+        -U postgres
+    # Lock the server to loopback inside the container — nothing outside
+    # the add-on container should reach Postgres directly.
+    {
+        echo "listen_addresses = 'localhost'"
+        echo "unix_socket_directories = '${RUN_DIR}'"
+    } >> "${DATA}/postgresql.conf"
+fi
+
+# Boot a short-lived Postgres just long enough to assert the famick role
+# and database. pg_ctl waits for readiness with -w.
+sudo -u postgres "${BIN}/pg_ctl" \
+    -D "${DATA}" \
+    -l /tmp/pg-cont-init.log \
+    -o "-c unix_socket_directories=${RUN_DIR}" \
+    start -w
+
+sudo -u postgres "${BIN}/psql" -h "${RUN_DIR}" -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'famick') THEN
+        CREATE USER famick WITH PASSWORD 'famick';
+    END IF;
+END
+$$;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'famick') THEN
+        CREATE DATABASE famick OWNER famick;
+    END IF;
+END
+$$;
+SQL
+
+sudo -u postgres "${BIN}/pg_ctl" -D "${DATA}" stop -w
+
+echo "[01-postgres] postgres ready (role=famick db=famick)"
