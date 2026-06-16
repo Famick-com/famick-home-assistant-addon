@@ -6,6 +6,19 @@ and the version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.5]
+
+### Fixed
+
+- On arm64 hosts (Raspberry Pi) the scheduler service hot-looped with
+  `/usr/local/bin/supercronic: cannot execute binary file: Exec format
+  error`. The binary comes from the canonical base image
+  (`mtherienfamick/homemanagement`), whose Dockerfile had the same
+  `ARG TARGETARCH=amd64` default-shadowing bug — the arm64 base baked in an
+  x86_64 supercronic. Fixed in the base image (republished as
+  `1.0.0-beta.6`); this release just rebuilds the add-on on top of the
+  corrected base. No add-on source changed.
+
 ## [0.1.4]
 
 ### Fixed
