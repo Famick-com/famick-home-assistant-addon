@@ -1,0 +1,9 @@
+---
+configuration:
+  log_level:
+    name: Log level
+    description: >-
+      Verbosity for the add-on's own startup and supervision messages.
+      Famick's application log level follows the app's defaults and is
+      not affected by this setting.
+network: {}
