@@ -6,6 +6,18 @@ and the version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.4]
+
+### Fixed
+
+- First-boot Postgres init aborted with `CREATE DATABASE cannot be executed
+  from a function`, stopping the container. The `cont-init.d/01-postgres`
+  script wrapped `CREATE DATABASE famick` in a `DO $$ ... $$` block, which
+  Postgres forbids (it can't run inside a function/transaction context). The
+  database is now created idempotently via psql's `\gexec`, which runs the
+  statement at the top level. The role creation (which is allowed in a DO
+  block) is unchanged.
+
 ## [0.1.3]
 
 ### Fixed

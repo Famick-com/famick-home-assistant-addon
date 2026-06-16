@@ -53,13 +53,12 @@ BEGIN
     END IF;
 END
 $$;
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'famick') THEN
-        CREATE DATABASE famick OWNER famick;
-    END IF;
-END
-$$;
+-- CREATE DATABASE cannot run inside a DO/PL-pgSQL block (it can't execute in
+-- a function or transaction context), so guard it with \gexec: the SELECT
+-- emits the CREATE statement only when the db is absent, and \gexec runs that
+-- text at the top level where CREATE DATABASE is allowed.
+SELECT 'CREATE DATABASE famick OWNER famick'
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'famick')\gexec
 SQL
 
 sudo -u postgres "${BIN}/pg_ctl" -D "${DATA}" stop -w
