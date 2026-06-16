@@ -1,14 +1,17 @@
 ---
 name: Famick Home Management
-version: "0.1.0"
+version: "0.1.1"
 slug: famick
 description: Self-hosted household management — inventory, equipment, vehicles, recipes, chores, contacts. Single sign-on with your HA user via Ingress.
 url: https://github.com/Famick-com/famick-home-assistant-addon
 
-# Multi-arch — image build is local per host (see Dockerfile).
+# Multi-arch — Supervisor substitutes {arch} with one of amd64 / aarch64.
+# Prebuilt images are published by .github/workflows/build.yaml on every
+# v* tag push, so installs are a fast download instead of a local build.
 arch:
   - amd64
   - aarch64
+image: ghcr.io/famick-com/famick-home-assistant-addon-{arch}
 
 # s6-overlay owns process supervision (postgres + famick + scheduler).
 init: false

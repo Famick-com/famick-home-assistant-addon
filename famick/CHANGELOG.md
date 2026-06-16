@@ -6,6 +6,15 @@ and the version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.1]
+
+### Changed
+
+- Install now pulls a prebuilt image from ghcr.io instead of building
+  locally on the HA host. Download takes ~30 seconds versus ~15 minutes
+  for the v0.1.0 local-build path. No behavior change inside the
+  container.
+
 ## [0.1.0]
 
 Initial release.
