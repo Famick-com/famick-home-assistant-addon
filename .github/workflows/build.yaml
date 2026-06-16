@@ -1,0 +1,107 @@
+name: Publish Add-on Image
+
+# Builds the add-on image for each supported HA Supervisor architecture and
+# pushes per-arch tags to ghcr.io on every git tag matching v*.
+#
+# HA Supervisor's `image:` field uses a `{arch}` placeholder that resolves
+# to one of amd64 / aarch64 / armv7 / armhf / i386 -- distinct per-arch
+# images, NOT a multi-arch manifest. Match that convention here.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to publish (e.g. 0.1.0). Required for manual runs.'
+        required: true
+        type: string
+
+env:
+  IMAGE_BASE: ghcr.io/famick-com/famick-home-assistant-addon
+
+# ghcr.io accepts GITHUB_TOKEN natively -- no separate secret required.
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    name: Build ${{ matrix.addon_arch }}
+    runs-on: ubuntu-latest
+    # arm64 under qemu emulation is slow; .NET workloads make it slower.
+    timeout-minutes: 90
+    strategy:
+      # Don't cancel the other arch on a failure -- emulated arm64 is the
+      # flakier of the two; finishing amd64 still gives operators something
+      # to install on x86 hosts while we re-run.
+      fail-fast: false
+      matrix:
+        include:
+          - addon_arch: amd64
+            platform: linux/amd64
+            qemu_arch: amd64
+          - addon_arch: aarch64
+            platform: linux/arm64
+            qemu_arch: arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            V="${{ inputs.version }}"
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            V="${GITHUB_REF#refs/tags/v}"
+          else
+            echo "::error::Could not determine version: not a v* tag push and no manual input"
+            exit 1
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Publishing $IMAGE_BASE-${{ matrix.addon_arch }}:$V (+ :latest)"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: ${{ matrix.qemu_arch }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.addon_arch }}
+        uses: docker/build-push-action@v7
+        with:
+          context: famick
+          platforms: ${{ matrix.platform }}
+          push: true
+          # `:latest` follows the most recent tag -- prereleases included --
+          # so config.yaml's `image:` line stays valid against whatever was
+          # last published. Matches the canonical Famick image's posture.
+          tags: |
+            ${{ env.IMAGE_BASE }}-${{ matrix.addon_arch }}:${{ steps.version.outputs.version }}
+            ${{ env.IMAGE_BASE }}-${{ matrix.addon_arch }}:latest
+          # Per-arch cache scope: amd64 and aarch64 don't share layers
+          # meaningfully, so a single shared cache would thrash on every run.
+          cache-from: type=gha,scope=${{ matrix.addon_arch }}
+          cache-to: type=gha,scope=${{ matrix.addon_arch }},mode=max
+
+      - name: Summary
+        run: |
+          {
+            echo "### Published ${{ matrix.addon_arch }}"
+            echo ""
+            echo "- Image: \`${{ env.IMAGE_BASE }}-${{ matrix.addon_arch }}\`"
+            echo "- Tags: \`${{ steps.version.outputs.version }}\`, \`latest\`"
+            echo "- Platform: \`${{ matrix.platform }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
