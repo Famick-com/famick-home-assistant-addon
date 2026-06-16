@@ -1,6 +1,6 @@
 ---
 name: Famick Home Management
-version: "0.1.1"
+version: "0.1.2"
 slug: famick
 description: Self-hosted household management — inventory, equipment, vehicles, recipes, chores, contacts. Single sign-on with your HA user via Ingress.
 url: https://github.com/Famick-com/famick-home-assistant-addon

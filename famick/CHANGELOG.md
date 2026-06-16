@@ -6,6 +6,17 @@ and the version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.2]
+
+### Fixed
+
+- First-boot bootstrap was failing on v0.1.0 and v0.1.1 because the
+  `/app/scripts/bootstrap.sh` it expected wasn't yet shipped in the
+  canonical Famick image. v0.1.2 inlines the bootstrap logic directly
+  into `cont-init.d/02-famick-bootstrap`, removing the canonical-image
+  dependency entirely. The add-on now completes its first start without
+  any manual intervention.
+
 ## [0.1.1]
 
 ### Changed

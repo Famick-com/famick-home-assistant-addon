@@ -1,18 +1,59 @@
 #!/command/with-contenv bash
-# s6-overlay cont-init step 2: run the Famick app-level first-boot bootstrap.
-# The script itself lives in the canonical Famick image (baked in by
-# self-hosted/docker-compose/Dockerfile from the submodule's
-# self-hosted/home-assistant-plugin/bootstrap.sh). This cont-init step is
-# just a thin invocation so the same logic that runs under docker-compose
-# also runs under the add-on, with /data as the persistent target.
+# s6-overlay cont-init step 2: Famick app-level first-boot bootstrap.
+#
+# Idempotent — every step must be safe to re-run on every add-on start.
+# Runs after 01-postgres (which initdb's the bundled Postgres) and before
+# the famick + scheduler services launch.
+#
+# Responsibilities:
+#   - Ensure the persistent /data subtree exists
+#   - Generate the RSA JWT signing key if missing
+#   - Generate a per-install tenant UUID if missing
+#   - Seed /data/config/server-config.json if missing
+#   - Seed /data/plugins/config.json from the bundled example if missing
 
 set -euo pipefail
 
-if [ ! -x /app/scripts/bootstrap.sh ]; then
-    echo "[02-famick-bootstrap] /app/scripts/bootstrap.sh missing — rebuild the canonical Famick image to include it" >&2
-    exit 1
+DATA=/data
+PLUGINS_EXAMPLE=/app/plugins/config.example.json
+
+mkdir -p \
+    "$DATA/keys" \
+    "$DATA/config" \
+    "$DATA/plugins" \
+    "$DATA/uploads" \
+    "$DATA/dataprotection"
+
+if [ ! -f "$DATA/keys/jwt-rsa.pem" ]; then
+    echo "[02-famick-bootstrap] generating RSA JWT signing key"
+    openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \
+        -out "$DATA/keys/jwt-rsa.pem" 2>/dev/null
+    chmod 600 "$DATA/keys/jwt-rsa.pem"
 fi
 
-FAMICK_DATA_DIR=/data \
-FAMICK_PLUGINS_EXAMPLE=/app/plugins/config.example.json \
-    /app/scripts/bootstrap.sh
+if [ ! -f "$DATA/config/tenant-id" ]; then
+    # Per-install random UUID — same value feeds FixedTenantId and
+    # SelfHosted__TenantId in the app env so per-request query scope and
+    # auth-service writes agree on identity. famick/run and scheduler/run
+    # read this file and export both env vars before launching their service.
+    hex=$(openssl rand -hex 16)
+    tenant="${hex:0:8}-${hex:8:4}-${hex:12:4}-${hex:16:4}-${hex:20:12}"
+    printf '%s\n' "$tenant" > "$DATA/config/tenant-id"
+    echo "[02-famick-bootstrap] generated tenant UUID $tenant"
+fi
+
+if [ ! -f "$DATA/config/server-config.json" ]; then
+    cat > "$DATA/config/server-config.json" <<'JSON'
+{
+  "ServerName": "Famick (Home Assistant)"
+}
+JSON
+    echo "[02-famick-bootstrap] seeded server-config.json"
+fi
+
+if [ ! -f "$DATA/plugins/config.json" ] && [ -f "$PLUGINS_EXAMPLE" ]; then
+    cp "$PLUGINS_EXAMPLE" "$DATA/plugins/config.json"
+    echo "[02-famick-bootstrap] seeded plugin config from example"
+fi
+
+echo "[02-famick-bootstrap] complete"
