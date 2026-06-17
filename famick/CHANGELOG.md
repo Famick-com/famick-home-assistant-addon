@@ -6,6 +6,19 @@ and the version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.7]
+
+### Fixed
+
+- After the UI loaded inside the HA sidebar it immediately redirected to a
+  404 (the HA-root `/login`) and couldn't navigate. The Blazor app used
+  root-absolute paths (`/login`, `/settings`, …), which under Ingress
+  resolve against the HA host root instead of the add-on's ingress prefix,
+  so every navigation escaped the add-on. Fixed in the canonical image
+  (`1.0.0-beta.8`): in-app navigation is now base-relative so it resolves
+  against the ingress base path. This release rebuilds the add-on on that
+  base. No add-on source changed.
+
 ## [0.1.6]
 
 ### Fixed
