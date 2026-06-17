@@ -6,6 +6,20 @@ and the version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.6]
+
+### Fixed
+
+- The add-on UI hung on the "Loading application…" splash (with a broken
+  logo) inside the HA sidebar. The Blazor WASM shell ships a static
+  `<base href="/">`, so under Ingress — served from
+  `/api/hassio_ingress/<token>/` — the browser resolved `_framework/*` and
+  `_content/*` against the HA root, which Supervisor doesn't route to the
+  add-on, so the app never booted. Fixed in the canonical image
+  (`1.0.0-beta.7`) with middleware that rewrites the shell's `<base href>`
+  to the Ingress prefix; this release rebuilds the add-on on that base. No
+  add-on source changed.
+
 ## [0.1.5]
 
 ### Fixed
