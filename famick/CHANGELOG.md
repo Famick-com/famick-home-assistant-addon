@@ -6,6 +6,17 @@ and the version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.8]
+
+### Added
+
+- Home Assistant single sign-on now works end-to-end: opening the add-on
+  signs you in automatically as your HA user instead of showing a login
+  page. The server already trusted Supervisor's `X-Remote-User-*` headers;
+  this adds the client side — the SPA exchanges that trusted identity for a
+  normal session on startup. Fixed in the canonical image (`1.0.0-beta.9`);
+  this release rebuilds the add-on on that base. No add-on source changed.
+
 ## [0.1.7]
 
 ### Fixed
