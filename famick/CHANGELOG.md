@@ -6,6 +6,17 @@ and the version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.10]
+
+### Changed
+
+- First-run setup is smoother under the add-on: the **public URL** field is
+  now optional (the web UI never needs it — it only matters for external /
+  mobile clients), and the **timezone** field is pre-filled from the
+  server's detected zone, which Home Assistant sets to your home's zone,
+  instead of defaulting to UTC. Fixed in the canonical image
+  (`1.0.0-beta.11`); this rebuilds the add-on on it.
+
 ## [0.1.9]
 
 ### Fixed
