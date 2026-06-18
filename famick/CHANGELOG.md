@@ -6,6 +6,19 @@ and the version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.9]
+
+### Fixed
+
+- Admin-only actions returned "forbidden" under Ingress: the server setup
+  wizard's Next button and the Settings → Users page (which showed no
+  users). Under Ingress every request was authenticated from the HA
+  identity headers, whose principal carried no role claim, so role-gated
+  endpoints rejected even the admin user. The server now prefers the
+  signed-in JWT (which carries roles) when the client presents one, falling
+  back to the header identity only for the SSO handshake. Fixed in the
+  canonical image (`1.0.0-beta.10`); this rebuilds the add-on on it.
+
 ## [0.1.8]
 
 ### Added
