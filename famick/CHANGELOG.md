@@ -6,6 +6,15 @@ and the version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.11]
+
+### Security
+
+- Patches a high-severity .NET denial-of-service in a transitive dependency
+  of the passkey/WebAuthn library (`Microsoft.Bcl.Memory`, CVE-2026-26127),
+  pinned to 9.0.14 in the canonical image (`1.0.0-beta.12`). This rebuilds
+  the add-on on the patched base. No add-on source changed.
+
 ## [0.1.10]
 
 ### Changed
