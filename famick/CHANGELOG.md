@@ -6,6 +6,15 @@ and the version numbers follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.12]
+
+### Changed
+
+- Rebuilds the add-on on the canonical image (`1.0.0-beta.13`), which adds
+  first-class server-platform detection, store integrations that expose
+  product features over client credentials without an OAuth account link, and
+  location-aware product lookups (Kroger 3.0.0). No add-on source changed.
+
 ## [0.1.11]
 
 ### Security
